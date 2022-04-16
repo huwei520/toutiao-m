@@ -1,7 +1,6 @@
 <template>
   <div>
     <router-view></router-view>
-    <h1>黑马头条</h1>
   </div>
 </template>
 
@@ -19,4 +18,11 @@ export default {
 }
 </script>
 
-<style lang="scss" scoped></style>
+<style lang="less" scoped>
+.box {
+  margin-top: 30px;
+  width: 30px;
+  height: 30px;
+  background-color: pink;
+}
+</style>
