@@ -18,7 +18,7 @@
     <!-- 频道列表 -->
 
     <!-- 频道编辑弹出层 -->
-    <van-popup v-model="isChennelEditShow" closeable position="bottom" close-icon-position="top-left" :style="{ height: '100%' }"><channel-edit :my-channels="channels" :active="active"></channel-edit></van-popup>
+    <van-popup v-model="isChennelEditShow" closeable position="bottom" close-icon-position="top-left" :style="{ height: '100%' }"><channel-edit :my-channels="channels" :active="active" @update-active="onUpdateActive"></channel-edit></van-popup>
   </div>
 </template>
 
@@ -26,6 +26,9 @@
 import { getUserChannels } from '../../api/user'
 import ArticleList from '../../views/home/components/article-list.vue'
 import ChannelEdit from './components/channel-edit.vue'
+import { mapState } from 'vuex'
+import { getItem } from '../../utils/storage'
+
 export default {
   name: 'HeimaVueHome',
 
@@ -38,15 +41,42 @@ export default {
   },
 
   mounted() {},
+  computed: {
+    ...mapState(['user'])
+  },
 
   methods: {
     async loadChannels() {
       try {
-        const { data } = await getUserChannels()
-        this.channels = data.data.channels
+        // const { data } = await getUserChannels()
+        // this.channels = data.data.channels
+
+        let channels = []
+        if (this.user) {
+          // 已登录，请求获取用户频道列表
+
+          const { data } = await getUserChannels()
+          this.channels = data.data.channels
+        } else {
+          // 未登录，判断是否有本地的频道列表数据
+          const loadChannels = getItem('TOUTIAO_CHANNELS')
+          // 有，拿来使用
+          if (loadChannels) {
+            channels = loadChannels
+          } else {
+            // 没有， 请求获取默认频道列表
+            const { data } = await getUserChannels()
+            this.channels = data.data.channels
+          }
+        }
+        this.channels = channels
       } catch (err) {
         this.$toast('获取频道列表数据失败')
       }
+    },
+    onUpdateActive(index, isChennelEditShow = true) {
+      this.active = index
+      this.isChennelEditShow = isChennelEditShow
     }
   },
 

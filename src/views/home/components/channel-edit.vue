@@ -21,7 +21,12 @@
 </template>
 
 <script>
-import { getAllChannels } from '../../../api/channel'
+import { getAllChannels, addUserChannel, deleteUserChannel } from '../../../api/channel'
+
+import { mapState } from 'vuex'
+
+import { setItem } from '../../../utils/storage'
+
 export default {
   name: 'HeimaVueChannelEdit',
   props: {
@@ -48,6 +53,9 @@ export default {
     //   })
     //   return channels
     // }
+
+    ...mapState(['user']),
+
     recommendChannels() {
       // 这是数组的 filter 方法，把符合条件的元素存储到新数组中并返回
       return this.allChannels.filter(channel => {
@@ -86,11 +94,62 @@ export default {
         this.$toast('数据获取失败')
       }
     },
-    onAddChannel(channel) {
+    async onAddChannel(channel) {
       this.myChannelS.push(channel)
+
+      // 数据持久化处理
+      if (this.user) {
+        // 已登录，把数据请求接口放到线上
+        try {
+          await addUserChannel({
+            id: channel.id, //频道id
+            seq: this.myChannels.length // 序号
+          })
+        } catch (err) {
+          console.log('出错了', err)
+        }
+      } else {
+        // 未登录，把数据存储到本地
+        setItem('TOUTIAO_CHANNELS', this.myChannels)
+      }
     },
     onMyChannelClick(channel, index) {
-      console.log(channel, index)
+      if (this.isEdit) {
+        // 1.如果是固定频道， 则不删除
+        if (this.flexChannels.includes(channel.id)) {
+          return
+        }
+        // 2. 删除频道项
+        this.myChannelS.splice(index, 1)
+
+        // 3.如果删除的是激活频道之前的频道，则更新激活的频道项
+        // 参数一： 要删除的元素的索引（包括该索引）
+        // 参数二： 删除的个数，如果不指定，则从参数一开始一直删到最后
+        if (index <= this.active) {
+          // 让激活频道的索引 -1
+          this.$emit('update-active', this.active - 1)
+        }
+
+        // 4. 处理持久化
+
+        this.deleteChannel()
+      } else {
+        // 非编辑状态，执行切换频道
+        this.$emit('update-active', index, false)
+      }
+    },
+    async deleteChannel(channel) {
+      try {
+        if (this.user) {
+          // 已登录，则将数据更新到线上
+          await deleteUserChannel(channel.id)
+        } else {
+          // 未登录，将数据更新到本地
+          setItem('TOUTIAO_CHANNELS', this.myChannels)
+        }
+      } catch (err) {
+        this.$toast('操作失败，请稍后重试')
+      }
     }
   }
 }
